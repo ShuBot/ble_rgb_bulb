@@ -11,8 +11,8 @@
 #define RMT_LED_STRIP_GPIO_NUM      15
 
 #define LED_NUMBERS         24
-#define CHASE_SPEED_MS      10
-#define LED_BRIGHTNESS      10
+#define CHASE_SPEED_MS      50
+#define LED_BRIGHTNESS      50
 
 uint32_t red    = 0;
 uint32_t green  = 0;
@@ -46,6 +46,130 @@ led_strip_encoder_config_t encoder_config = {
 rmt_transmit_config_t tx_config = {
     .loop_count = 0, // no transfer loop
 };
+
+void blink_strip_single(void)
+{
+    /*  Blinking the entire LED Strip as a Single LED.
+    */
+    uint32_t brightness = LED_BRIGHTNESS;
+
+    red = 250;  blue = 0; green = 0;
+
+    red   = (red * brightness) / 255;
+    green = (green * brightness) / 255;
+    blue  = (blue * brightness) / 255;
+    
+    for(int j = 0; j < LED_NUMBERS; j++)
+    {
+        led_strip_pixels[j * 3 + RED]   = red;
+        led_strip_pixels[j * 3 + GREEN] = green;
+        led_strip_pixels[j * 3 + BLUE]  = blue;
+        ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
+        vTaskDelay(pdMS_TO_TICKS(1));
+        //vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
+    }
+    vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
+    led_off();
+    vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
+    // memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
+    // ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
+
+}
+void blink_strip(uint32_t c, uint32_t time, uint32_t delay_ms)
+{
+    TickType_t elapsed_ticks, new_ticks;
+    uint32_t elapsed_ms, run_time, new_ms = 0;
+    uint32_t brightness = LED_BRIGHTNESS;
+
+    elapsed_ticks = xTaskGetTickCount();
+    elapsed_ms = pdTICKS_TO_MS(elapsed_ticks);
+    run_time = elapsed_ms + time;
+    printf("Run Time: %ld\n", run_time);
+
+    while(run_time > new_ms)
+    {
+        for(int i = 0; (i < 7); i++)
+        {
+            for(int j = 0; j < LED_NUMBERS; j++)
+            {
+                switch(c)
+                {
+                    case 0:             //White[] = 255, 255, 255 
+                        red     = 255;
+                        green   = 255;
+                        blue    = 255;
+                        break;
+
+                   case 1:             //Purple[] = 150, 0, 210
+                        red     = 150;
+                        green   = 0;
+                        blue    = 210;
+                        break;
+
+                    case 2:             //Blue[]   = 0, 0, 255
+                        red     = 0;
+                        green   = 0;
+                        blue    = 255;
+                        break;
+
+                    case 3:             //Green[]  = 0, 255, 0
+                        red     = 0;
+                        green   = 255;
+                        blue    = 0;
+                        break;
+
+                    case 4:             //Yellow[] = 255, 255, 0
+                        red     = 255;
+                        green   = 255;
+                        blue    = 0;
+                        break;
+
+                    case 5:             //Orange[] = 255, 120, 0
+                        red     = 255;
+                        green   = 110;
+                        blue    = 0;
+                        break;
+
+                    case 6:             //Red[]    = 255, 0, 0 
+                        red     = 255;
+                        green   = 0;
+                        blue    = 0;
+                        break;
+
+                    default:            //White[]   = 255, 255, 255
+                        red     = 255;
+                        green   = 255;
+                        blue    = 255;
+                        break;
+                }
+                red   = (red * brightness) / 255;
+                green = (green * brightness) / 255;
+                blue  = (blue * brightness) / 255;
+                
+                led_strip_pixels[j * 3 + RED]   = red;
+                led_strip_pixels[j * 3 + GREEN] = green;
+                led_strip_pixels[j * 3 + BLUE]  = blue;
+
+                ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
+                vTaskDelay(pdMS_TO_TICKS(1));
+            }
+            //memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
+            vTaskDelay(pdMS_TO_TICKS(delay_ms));
+            
+            //ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
+            //vTaskDelay(pdMS_TO_TICKS(delay_ms));
+        }
+        led_off();
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
+        new_ticks = xTaskGetTickCount();
+        new_ms = pdTICKS_TO_MS(new_ticks);
+        printf("New Time: %ld\n", new_ms);
+        //printf("Run Time: %ld\n", run_time);
+    }
+    led_off();
+    //memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
+    //vTaskDelay(pdMS_TO_TICKS(delay_ms));
+}
 
 void led_select_multiple(uint32_t x, uint32_t y, uint32_t z, uint32_t r, uint32_t g, uint32_t b)
 {
@@ -242,11 +366,14 @@ void led_strip_tranz()
 }
 void led_off(void)
 {
-        for(int i = 0; i < 3; i++)
+        for(int i = 0; i < LED_NUMBERS; i++)
         {
             led_strip_pixels[i * 3 + 0] = 0;
             led_strip_pixels[i * 3 + 1] = 0;
             led_strip_pixels[i * 3 + 2] = 0;   
+
+            ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
+            vTaskDelay(pdMS_TO_TICKS(1));
         }
 }
 
