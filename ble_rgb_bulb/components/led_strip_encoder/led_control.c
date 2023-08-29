@@ -11,8 +11,8 @@
 #define RMT_LED_STRIP_GPIO_NUM      15
 
 #define LED_NUMBERS         24
-#define CHASE_SPEED_MS      50
-#define LED_BRIGHTNESS      50
+#define CHASE_SPEED_MS      100
+#define LED_BRIGHTNESS      100
 
 uint32_t red    = 0;
 uint32_t green  = 0;
@@ -24,9 +24,10 @@ static const char *TAG = "RGB_BULB";
 //N = 0 for green, 1 for red and 2 for blue
 static uint8_t led_strip_pixels[LED_NUMBERS * 3];
 
-#define RED     1
-#define GREEN   0
-#define BLUE    2
+#define RED_PIN     1
+#define GREEN_PIN   0
+#define BLUE_PIN    2
+
 //Create RMT TX Channel
 rmt_channel_handle_t led_chan = NULL;
 rmt_tx_channel_config_t tx_chan_config = {
@@ -53,7 +54,7 @@ void blink_strip_single(void)
     */
     uint32_t brightness = LED_BRIGHTNESS;
 
-    red = 250;  blue = 0; green = 0;
+    red = 0;  green = 50;  blue = 255;
 
     red   = (red * brightness) / 255;
     green = (green * brightness) / 255;
@@ -61,19 +62,16 @@ void blink_strip_single(void)
     
     for(int j = 0; j < LED_NUMBERS; j++)
     {
-        led_strip_pixels[j * 3 + RED]   = red;
-        led_strip_pixels[j * 3 + GREEN] = green;
-        led_strip_pixels[j * 3 + BLUE]  = blue;
+        led_strip_pixels[j * 3 + RED_PIN]   = red;
+        led_strip_pixels[j * 3 + GREEN_PIN] = green;
+        led_strip_pixels[j * 3 + BLUE_PIN]  = blue;
         ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
-        vTaskDelay(pdMS_TO_TICKS(1));
-        //vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
+        //vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
     }
-    vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
-    led_off();
-    vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
-    // memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
-    // ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
-
+    // vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
+    // led_off();
+    // vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
 }
 void blink_strip(uint32_t c, uint32_t time, uint32_t delay_ms)
 {
@@ -146,9 +144,9 @@ void blink_strip(uint32_t c, uint32_t time, uint32_t delay_ms)
                 green = (green * brightness) / 255;
                 blue  = (blue * brightness) / 255;
                 
-                led_strip_pixels[j * 3 + RED]   = red;
-                led_strip_pixels[j * 3 + GREEN] = green;
-                led_strip_pixels[j * 3 + BLUE]  = blue;
+                led_strip_pixels[j * 3 + RED_PIN]   = red;
+                led_strip_pixels[j * 3 + GREEN_PIN] = green;
+                led_strip_pixels[j * 3 + BLUE_PIN]  = blue;
 
                 ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
                 vTaskDelay(pdMS_TO_TICKS(1));
@@ -177,9 +175,9 @@ void led_select_multiple(uint32_t x, uint32_t y, uint32_t z, uint32_t r, uint32_
     green   = (g * LED_BRIGHTNESS) / 255;   //Green LED Brightness
     blue    = (b * LED_BRIGHTNESS) / 255;   //Blue LED Brightness
 
-    led_strip_pixels[x * 3 + RED]   = red;
-    led_strip_pixels[y * 3 + GREEN] = green;
-    led_strip_pixels[z * 3 + BLUE]  = blue;
+    led_strip_pixels[x * 3 + RED_PIN]   = red;
+    led_strip_pixels[y * 3 + GREEN_PIN] = green;
+    led_strip_pixels[z * 3 + BLUE_PIN]  = blue;
 
     ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
     vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
@@ -188,22 +186,21 @@ void led_select_multiple(uint32_t x, uint32_t y, uint32_t z, uint32_t r, uint32_
     vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));   
 }
 
-void led_select_single(uint32_t x, uint32_t r, uint32_t g, uint32_t b)
+void led_strip_single(uint32_t r, uint32_t g, uint32_t b)
 {
-        //x = 5;     //LED Number in the strip.
-        red     = (r * LED_BRIGHTNESS) / 100;   //Red LED Brightness
-        green   = (g * LED_BRIGHTNESS) / 100;   //Green LED Brightness
-        blue    = (b * LED_BRIGHTNESS) / 100;   //Blue LED Brightness
+        red     = (r * LED_BRIGHTNESS) / 255;   //Red LED Brightness
+        green   = (g * LED_BRIGHTNESS) / 255;   //Green LED Brightness
+        blue    = (b * LED_BRIGHTNESS) / 255;   //Blue LED Brightness
 
-        led_strip_pixels[x * 3 + RED]  = red;
-        led_strip_pixels[x * 3 + GREEN] = green;
-        led_strip_pixels[x * 3 + BLUE] = blue;
-
-        ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
-        vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
-        memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
-        ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
-        vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
+        for(int j = 0; j < LED_NUMBERS; j++)
+        {
+            led_strip_pixels[j * 3 + RED_PIN]   = red;
+            led_strip_pixels[j * 3 + GREEN_PIN] = green;
+            led_strip_pixels[j * 3 + BLUE_PIN]  = blue;
+            ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
+            //vTaskDelay(pdMS_TO_TICKS(100));
+            vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
+        }
 }
 
 void led_rainbow()
@@ -214,7 +211,7 @@ void led_rainbow()
     */
     for(int i = 0; i < LED_NUMBERS; i++)
     {
-        uint32_t cnt = (LED_NUMBERS/7);
+        uint32_t cnt = (LED_NUMBERS/8);
 
         for (int j = i; j < LED_NUMBERS; j += cnt)
         {
@@ -276,16 +273,18 @@ void led_rainbow()
             green = (green * brightness) / 255;
             blue  = (blue * brightness) / 255;
             
-            led_strip_pixels[j * 3 + RED]   = red;
-            led_strip_pixels[j * 3 + GREEN] = green;
-            led_strip_pixels[j * 3 + BLUE]  = blue;
+            led_strip_pixels[j * 3 + RED_PIN]   = red;
+            led_strip_pixels[j * 3 + GREEN_PIN] = green;
+            led_strip_pixels[j * 3 + BLUE_PIN]  = blue;
+    
+            ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
+            vTaskDelay(pdMS_TO_TICKS(1));
         }
-        ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
-        vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
-        // memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
-        // ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
-        // vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
     }
+    vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
+    led_off();
+    vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
+
 }
 
 void led_strip_tranz()
@@ -352,9 +351,9 @@ void led_strip_tranz()
             green = (green * brightness) / 255;
             blue  = (blue * brightness) / 255;
             
-            led_strip_pixels[j * 3 + RED]   = red;
-            led_strip_pixels[j * 3 + GREEN] = green;
-            led_strip_pixels[j * 3 + BLUE]  = blue;
+            led_strip_pixels[j * 3 + RED_PIN]   = red;
+            led_strip_pixels[j * 3 + GREEN_PIN] = green;
+            led_strip_pixels[j * 3 + BLUE_PIN]  = blue;
 
             ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
             vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
@@ -364,17 +363,18 @@ void led_strip_tranz()
         }
     }
 }
+
 void led_off(void)
 {
-        for(int i = 0; i < LED_NUMBERS; i++)
-        {
-            led_strip_pixels[i * 3 + 0] = 0;
-            led_strip_pixels[i * 3 + 1] = 0;
-            led_strip_pixels[i * 3 + 2] = 0;   
+    for(int i = 0; i < LED_NUMBERS; i++)
+    {
+        led_strip_pixels[i * 3 + 0] = 0;
+        led_strip_pixels[i * 3 + 1] = 0;
+        led_strip_pixels[i * 3 + 2] = 0;   
 
-            ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
-            vTaskDelay(pdMS_TO_TICKS(1));
-        }
+        ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
 }
 
 /**
