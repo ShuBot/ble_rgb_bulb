@@ -3,10 +3,12 @@
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
+#include <stdio.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
 
@@ -15,6 +17,7 @@
 #include "led_control.h"
 #include "max98357.h"
 #include "ble_lib.h"
+#include "bleprph.h"
 
 static const char *tag = "BLE_BULB";
 
@@ -23,35 +26,14 @@ static const char *tag = "BLE_BULB";
 
 static QueueHandle_t bleWriteQueue;
 
+SemaphoreHandle_t bleDataUpdate = NULL;
+
 volatile bool interruptTriggered = false;
-
-uint8_t gdata = 0;
-
-static int pdata = 0;       //For getting data from BLE Service Inrrpts
-int get_blewrt_data(void);
-
-int get_blewrt_data()
-{
-    uint8_t wdata = ble_data_send();
-
-    if(wdata != pdata)
-    {
-        interruptTriggered = true;
-        pdata = wdata;
-        return wdata;
-    }
-    else 
-    {
-        interruptTriggered = false;
-        return 0;
-    }
-}
 
 static void led_task(void *arg)
 {
-    //int i = 0;
     vTaskDelay(1000 / portTICK_PERIOD_MS);
-    while (1/*i<20*/) {
+    while (1) {
         /*
             blink_strip(led_color_code, time to blink for(ms) , delay time between blinks(ms))
             color code:  0:White 1:Purple 2:Blue 3:Green 4:Yellow 5:Orange 6:Red
@@ -61,32 +43,56 @@ static void led_task(void *arg)
         //led_strip_tranz();
         //led_rainbow();
         //vTaskDelay(10 / portTICK_PERIOD_MS);
-        //i++;
-        //int w_data = gdata;
-        switch(gdata)
+        //led_strip_single(0, 0, 255);  //Send RGB color data for LED to glow continuously.
+        //vTaskDelay(10 / portTICK_PERIOD_MS);
+        if (xSemaphoreTake(bleDataUpdate, portMAX_DELAY) == pdTRUE)
         {
-            case 1 : 
-                    led_strip_single(0, 0, 255);
-                    break;
-            
-            case 2 : 
-                    led_strip_single(255, 0, 0);
-                    break;
-            
-            case 3 : 
-                    led_strip_single(0, 255, 0);
-                    notify_2();
-                    vTaskDelay(10 / portTICK_PERIOD_MS);
-                    break;
-            
-            case 4 :
-                    led_strip_tranz();
-                    break;
-            
-            default:
-                    led_off();
-                    break;
+            // Handle the event data received from ble_data_task
+            int eventData = 0;
+            // Receive the event data from ble_data_task
+            if (xQueueReceive(bleWriteQueue, &eventData, portMAX_DELAY) == pdTRUE) {
+                printf("led_task received event data: %d\n", eventData);
+            }
+
+            switch(eventData)
+            {
+                case 0 :
+                        led_off();
+                        vTaskDelay(10 / portTICK_PERIOD_MS);
+                        break;
+
+                case 1 : 
+                        led_strip_single(0, 0, 255);
+                        //blink_strip(1, 5000, 25);
+                        printf("BLUE LED ON! \n");
+                        vTaskDelay(10 / portTICK_PERIOD_MS);
+                        break;
+                
+                case 2 : 
+                        led_strip_single(255, 0, 0);
+                        printf("REG LED ON! \n");
+                        vTaskDelay(10 / portTICK_PERIOD_MS);
+                        break;
+                
+                case 3 : 
+                        led_strip_single(0, 255, 0);
+                        printf("GREEN LED ON! \n");
+                        vTaskDelay(10 / portTICK_PERIOD_MS);
+                        //notify_2();
+                        //vTaskDelay(10 / portTICK_PERIOD_MS);
+                        break;
+                
+                case 4 :
+                        led_strip_tranz();
+                        printf("RAINBOW LED ON! \n");
+                        vTaskDelay(10 / portTICK_PERIOD_MS);
+                        break;
+                
+                default:
+                        break;
+            }
         }
+        
     }
     // blink_strip(1, 5000, 25);
     // vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -106,20 +112,15 @@ static void ble_data_task(void *arg)
     
     while (1) {
 
-        uint8_t wdata = get_blewrt_data();
+        uint8_t wdata = ble_data_send();    //function getting data from "ble_lib.c", from "gatt_srv.c"
         
-        if(interruptTriggered)
+        if(wdata != 255)    //interruptTriggered)
         {
             if(xQueueSendFromISR(bleWriteQueue, &wdata, &xHigherPriorityTaskWoken) == pdTRUE) 
             {
                 // Data sent successfully
                 ESP_LOGI(tag,"Data send to Queue. %d \n", wdata);
-                gdata = wdata;
-                // if(wdata == 1)
-                // {
-                //     vTaskDelay(10 / portTICK_PERIOD_MS);
-                //     notify_2();
-                // }
+                xSemaphoreGive(bleDataUpdate);
             }
             else if(uxQueueMessagesWaitingFromISR(bleWriteQueue) >= QUEUE_LENGTH)
             {
@@ -128,74 +129,60 @@ static void ble_data_task(void *arg)
                 xQueueReset(bleWriteQueue);
                 ESP_LOGI(tag,"Queue RESET");
                 xQueueSendFromISR(bleWriteQueue, &wdata, &xHigherPriorityTaskWoken);
-                gdata = wdata;
                 ESP_LOGI(tag,"Data send to Queue. %d \n", wdata);
             }
             
-            interruptTriggered = false;
+            //interruptTriggered = false;
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
-        // if(xQueuePeek(bleWriteQueue, &gdata, pdMS_TO_TICKS(500)) == pdTRUE) {
-        //     //Process the received data
-        //     //... (your processing logic)
-        //     //printf("\nQ out: %d\n", wdata);
-        //     ESP_LOGI(tag,"Data Read in Queue: %d", wdata);
-        // }
-        //ESP_LOGI(tag,"Data Read in Global: %d", gdata);
     }
     //vTaskDelete(NULL);
 }
 
-// static void audio_task(void *arg)
-// {
-//     vTaskDelay(100 / portTICK_PERIOD_MS);
-//     ESP_LOGI(tag,"Audio Task Starting.\n");
+static void audio_task(void *arg)
+{
+    //vTaskDelay(100 / portTICK_PERIOD_MS);
+    //ESP_LOGI(tag,"Audio Task Starting.\n");
 
-//     while(1)
-//     {
-//         int w_data = gdata;
-//     //     switch(gdata)
-//     //     {
-//     //         case 1 : 
-//     //                 notify_1();
-//     //                 ESP_LOGI(tag,"Audio 1 Played.");
-//     //                 vTaskDelay(100 / portTICK_PERIOD_MS);
-//     //                 break;
+    while(1)
+    //{
+        int w_data = 0;
+    //     switch(w_data)
+    //     {
+    //         case 1 : 
+    //                 notify_1();
+    //                 ESP_LOGI(tag,"Audio 1 Played.");
+    //                 vTaskDelay(100 / portTICK_PERIOD_MS);
+    //                 break;
             
-//     //         case 2 : 
-//     //                 notify_2();
-//     //                 ESP_LOGI(tag,"Audio 2 Played.");
-//     //                 vTaskDelay(100 / portTICK_PERIOD_MS);
-//     //                 break;
+    //         case 2 : 
+    //                 notify_2();
+    //                 ESP_LOGI(tag,"Audio 2 Played.");
+    //                 vTaskDelay(100 / portTICK_PERIOD_MS);
+    //                 break;
             
-//     //         // case 3 : 
-//     //         //         notify_3();
-//     //         //         vTaskDelay(100 / portTICK_PERIOD_MS);
-//     //         //         break;
+    //         // case 3 : 
+    //         //         notify_3();
+    //         //         vTaskDelay(100 / portTICK_PERIOD_MS);
+    //         //         break;
             
-//     //         // case 4 :
-//     //         //         notify_4();
-//     //         //         vTaskDelay(100 / portTICK_PERIOD_MS);
-//     //         //         break;
+    //         // case 4 :
+    //         //         notify_4();
+    //         //         vTaskDelay(100 / portTICK_PERIOD_MS);
+    //         //         break;
             
-//     //         default:
-//     //                 //ESP_ERROR_CHECK(i2s_channel_disable(tx_chan));
-//     //                 break; 
-//     //     }
-//         if(w_data == 2)
-//         {
-//             notify_1();
-//             vTaskDelay(50 / portTICK_PERIOD_MS);
-//         }
-//         //notify_1();
-//         vTaskDelay(100 / portTICK_PERIOD_MS);
-//     }
+    //         default:
+    //                 //ESP_ERROR_CHECK(i2s_channel_disable(tx_chan));
+    //                 break; 
+    //     }
+    //}
 
-//     vTaskDelete(NULL);
-// }
+    //vTaskDelete(NULL);
+}
 
 void app_main(void)
 {
+    bleDataUpdate = xSemaphoreCreateBinary();
     bleWriteQueue = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
     
     if (bleWriteQueue == NULL) {
@@ -204,17 +191,17 @@ void app_main(void)
     }
 
     ble_start();        //BLE Module Initiated
-    max98357a_init();   //I2S Audio Module Initiated
+    //max98357a_init();   //I2S Audio Module Initiated
     led_setup();        //LED GPIO Module Initiated
+
     /***
-        Keep the Task Priority arranged properly. 
+        Properly manage the Task Priorities.
         Avoid using too long delays.
         Use Hard and Soft Interrupts as much as possible.
-        LEDs flicker even when "led_strip_single()" func is used. Try different approach.
     ***/
     xTaskCreate(ble_data_task, "ble_data_task", 2048*2, NULL, configMAX_PRIORITIES-1, NULL);
     
-    xTaskCreate(led_task,       "led_task",     2048*2, NULL, configMAX_PRIORITIES, NULL);
+    xTaskCreatePinnedToCore(led_task,       "led_task",     2048*2, NULL, configMAX_PRIORITIES, NULL, 1);
 
     //xTaskCreate(audio_task,     "audio_task",   2048*2, NULL, configMAX_PRIORITIES, NULL);
     

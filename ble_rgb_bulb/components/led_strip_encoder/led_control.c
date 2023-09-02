@@ -12,7 +12,7 @@
 
 #define LED_NUMBERS         24
 #define CHASE_SPEED_MS      100
-#define LED_BRIGHTNESS      100
+#define LED_BRIGHTNESS      60
 
 uint32_t red    = 0;
 uint32_t green  = 0;
@@ -293,7 +293,7 @@ void led_strip_tranz()
     Color[] = R G B
     */
     uint32_t brightness = LED_BRIGHTNESS;
-    for(int i = 0; i < 7; i++)
+    for(int i = 0; i < 8; i++)
     {
         for(int j = 0; j < LED_NUMBERS; j++)
         {
@@ -362,6 +362,7 @@ void led_strip_tranz()
             // vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
         }
     }
+    led_off();
 }
 
 void led_off(void)

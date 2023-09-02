@@ -26,11 +26,31 @@
 #include "services/gatt/ble_svc_gatt.h"
 #include "bleprph.h"
 #include "services/ans/ble_svc_ans.h"
+#include "ble_lib.h"
 
 /*** Maximum number of characteristics with the notify flag ***/
 #define MAX_NOTIFY 5
 
-int wrt_data = 0;
+uint8_t wrt_data = 0;
+volatile bool bleinterruptTriggered = false;
+
+int ble_write_data(void)
+{
+    uint8_t wdata = wrt_data;
+  
+    if(bleinterruptTriggered == true)
+    {
+        printf("bleinterruptTriggered!!! \n");
+        bleinterruptTriggered = false;
+        return wdata;
+    }
+    else 
+    {
+        //printf("NO Trigger. \n");
+        return -1;
+    }
+    //return wrt_data;
+}
 
 static const ble_uuid128_t gatt_svr_svc_uuid =
     BLE_UUID128_INIT(0x2d, 0x71, 0xa2, 0x59, 0xb4, 0x58, 0xc8, 0x12,
@@ -149,12 +169,6 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
     },
 };
 
-int func1(void)
-{
-    //wrt_data
-    return wrt_data;
-}
-
 static int
 gatt_svr_write(struct os_mbuf *om, uint16_t min_len, uint16_t max_len,
                void *dst, uint16_t *len)
@@ -192,7 +206,7 @@ gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
 {
     const ble_uuid_t *uuid;
     int rc;
-
+    
     switch (ctxt->op) {
     case BLE_GATT_ACCESS_OP_READ_CHR:
         if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
@@ -215,22 +229,27 @@ gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
         if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
             MODLOG_DFLT(INFO, "Characteristic write; conn_handle=%d attr_handle=%d",
                         conn_handle, attr_handle);
+            uuid = ctxt->chr->uuid;
+            if (attr_handle == gatt_svr_chr_val_handle) {
+                rc = gatt_svr_write(ctxt->om,
+                                    sizeof(gatt_svr_chr_val),
+                                    sizeof(gatt_svr_chr_val),
+                                    &gatt_svr_chr_val, NULL);
+                ble_gatts_chr_updated(attr_handle);
+                MODLOG_DFLT(INFO, "Notification/Indication scheduled for "
+                            "all subscribed peers.\n");
+                if(rc == 0)
+                {
+                    wrt_data = gatt_svr_chr_val;
+                    bleinterruptTriggered = true;
+                    //printf("In Fun: %d\n", wrt_data);
+                }
+                return rc;
+            }
+            //wrt_data = gatt_svr_chr_val;
         } else {
             MODLOG_DFLT(INFO, "Characteristic write by NimBLE stack; attr_handle=%d",
                         attr_handle);
-        }
-        uuid = ctxt->chr->uuid;
-        if (attr_handle == gatt_svr_chr_val_handle) {
-            rc = gatt_svr_write(ctxt->om,
-                                sizeof(gatt_svr_chr_val),
-                                sizeof(gatt_svr_chr_val),
-                                &gatt_svr_chr_val, NULL);
-            ble_gatts_chr_updated(attr_handle);
-            MODLOG_DFLT(INFO, "Notification/Indication scheduled for "
-                        "all subscribed peers.\n");
-            wrt_data = gatt_svr_chr_val;
-            printf("In Fun: %d\n", wrt_data);
-            return rc;
         }
         goto unknown;
 
@@ -302,7 +321,7 @@ int
 gatt_svr_init(void)
 {
     int rc;
-
+    
     ble_svc_gap_init();
     ble_svc_gatt_init();
     ble_svc_ans_init();

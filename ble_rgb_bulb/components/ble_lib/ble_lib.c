@@ -542,6 +542,7 @@ void ble_start(void)
 
 int ble_data_send(void)
 {
-    int x = func1();
+    int x = ble_write_data();
+    
     return x;
 }
