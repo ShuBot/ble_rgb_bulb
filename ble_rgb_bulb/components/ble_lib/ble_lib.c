@@ -540,9 +540,11 @@ void ble_start(void)
     }
 }
 
-int ble_data_send(void)
-{
-    int x = ble_write_data();
+//int ble_write_data(void);
+
+// int ble_data_send(void)
+// {
+//     int x = ble_write_data();
     
-    return x;
-}
+//     return x;
+// }

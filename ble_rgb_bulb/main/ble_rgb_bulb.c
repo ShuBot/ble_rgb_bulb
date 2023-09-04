@@ -18,6 +18,7 @@
 #include "max98357.h"
 #include "ble_lib.h"
 #include "bleprph.h"
+#include "global_functions.h"
 
 static const char *tag = "BLE_BULB";
 
@@ -29,6 +30,9 @@ static QueueHandle_t bleWriteQueue;
 SemaphoreHandle_t bleDataUpdate = NULL;
 
 volatile bool interruptTriggered = false;
+
+int gdata_test = 0;
+int brightness_in = 0;  //LED brightness input from BLE
 
 static void led_task(void *arg)
 {
@@ -45,9 +49,11 @@ static void led_task(void *arg)
         //vTaskDelay(10 / portTICK_PERIOD_MS);
         //led_strip_single(0, 0, 255);  //Send RGB color data for LED to glow continuously.
         //vTaskDelay(10 / portTICK_PERIOD_MS);
+        
         if (xSemaphoreTake(bleDataUpdate, portMAX_DELAY) == pdTRUE)
         {
             // Handle the event data received from ble_data_task
+            int lb = brightness_in;
             int eventData = 0;
             // Receive the event data from ble_data_task
             if (xQueueReceive(bleWriteQueue, &eventData, portMAX_DELAY) == pdTRUE) {
@@ -58,24 +64,25 @@ static void led_task(void *arg)
             {
                 case 0 :
                         led_off();
+                        //blink_strip_single();
                         vTaskDelay(10 / portTICK_PERIOD_MS);
                         break;
 
                 case 1 : 
-                        led_strip_single(0, 0, 255);
+                        led_strip_single(0, 0, 255, lb);
                         //blink_strip(1, 5000, 25);
                         printf("BLUE LED ON! \n");
                         vTaskDelay(10 / portTICK_PERIOD_MS);
                         break;
                 
                 case 2 : 
-                        led_strip_single(255, 0, 0);
+                        led_strip_single(255, 0, 0, lb);
                         printf("REG LED ON! \n");
                         vTaskDelay(10 / portTICK_PERIOD_MS);
                         break;
                 
                 case 3 : 
-                        led_strip_single(0, 255, 0);
+                        led_strip_single(0, 255, 0, lb);
                         printf("GREEN LED ON! \n");
                         vTaskDelay(10 / portTICK_PERIOD_MS);
                         //notify_2();
@@ -83,7 +90,7 @@ static void led_task(void *arg)
                         break;
                 
                 case 4 :
-                        led_strip_tranz();
+                        led_strip_tranz(lb);
                         printf("RAINBOW LED ON! \n");
                         vTaskDelay(10 / portTICK_PERIOD_MS);
                         break;
@@ -112,8 +119,11 @@ static void ble_data_task(void *arg)
     
     while (1) {
 
-        uint8_t wdata = ble_data_send();    //function getting data from "ble_lib.c", from "gatt_srv.c"
-        
+        uint8_t wdata = ble_get_write_data();    //function getting data from "ble_lib.c", from "gatt_srv.c"
+        //ble_send_write_data(200);
+        // if(gdata_test >= 10)
+        //     printf("global variable working! \n");
+
         if(wdata != 255)    //interruptTriggered)
         {
             if(xQueueSendFromISR(bleWriteQueue, &wdata, &xHigherPriorityTaskWoken) == pdTRUE) 
@@ -121,6 +131,7 @@ static void ble_data_task(void *arg)
                 // Data sent successfully
                 ESP_LOGI(tag,"Data send to Queue. %d \n", wdata);
                 xSemaphoreGive(bleDataUpdate);
+                gdata_test = wdata;
             }
             else if(uxQueueMessagesWaitingFromISR(bleWriteQueue) >= QUEUE_LENGTH)
             {
@@ -139,14 +150,43 @@ static void ble_data_task(void *arg)
     //vTaskDelete(NULL);
 }
 
-static void audio_task(void *arg)
+
+
+void app_main(void)
 {
+    bleDataUpdate = xSemaphoreCreateBinary();
+    bleWriteQueue = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
+    
+    if (bleWriteQueue == NULL) {
+        // Queue creation failed, handle the error.
+        ESP_LOGE(tag,"Queue NOT Created!");
+    }
+
+    ble_start();        //BLE Module Initiated
+    //max98357a_init();   //I2S Audio Module Initiated
+    led_setup();        //LED GPIO Module Initiated
+
+    /***
+        Properly manage the Task Priorities.
+        Avoid using too long delays.
+        Use Hard and Soft Interrupts as much as possible.
+    ***/
+    xTaskCreate(ble_data_task, "ble_data_task", 2048*2, NULL, configMAX_PRIORITIES-1, NULL);
+    
+    xTaskCreatePinnedToCore(led_task,       "led_task",     2048*2, NULL, configMAX_PRIORITIES, NULL, 1);
+
+    //xTaskCreate(audio_task,     "audio_task",   2048*2, NULL, configMAX_PRIORITIES, NULL);
+    
+}
+
+// static void audio_task(void *arg)
+// {
     //vTaskDelay(100 / portTICK_PERIOD_MS);
     //ESP_LOGI(tag,"Audio Task Starting.\n");
 
-    while(1)
+    //while(1)
     //{
-        int w_data = 0;
+    //    int w_data = 0;
     //     switch(w_data)
     //     {
     //         case 1 : 
@@ -178,31 +218,4 @@ static void audio_task(void *arg)
     //}
 
     //vTaskDelete(NULL);
-}
-
-void app_main(void)
-{
-    bleDataUpdate = xSemaphoreCreateBinary();
-    bleWriteQueue = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
-    
-    if (bleWriteQueue == NULL) {
-        // Queue creation failed, handle the error.
-        ESP_LOGE(tag,"Queue NOT Created!");
-    }
-
-    ble_start();        //BLE Module Initiated
-    //max98357a_init();   //I2S Audio Module Initiated
-    led_setup();        //LED GPIO Module Initiated
-
-    /***
-        Properly manage the Task Priorities.
-        Avoid using too long delays.
-        Use Hard and Soft Interrupts as much as possible.
-    ***/
-    xTaskCreate(ble_data_task, "ble_data_task", 2048*2, NULL, configMAX_PRIORITIES-1, NULL);
-    
-    xTaskCreatePinnedToCore(led_task,       "led_task",     2048*2, NULL, configMAX_PRIORITIES, NULL, 1);
-
-    //xTaskCreate(audio_task,     "audio_task",   2048*2, NULL, configMAX_PRIORITIES, NULL);
-    
-}
+// }

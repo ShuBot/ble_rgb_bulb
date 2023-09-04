@@ -42,7 +42,7 @@ struct ble_gatt_register_ctxt;
 
 void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg);
 int gatt_svr_init(void);
-int ble_write_data(void);
+//int ble_write_data(void);
 
 #ifdef __cplusplus
 }

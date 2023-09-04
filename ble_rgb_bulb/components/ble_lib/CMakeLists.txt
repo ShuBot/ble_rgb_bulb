@@ -2,4 +2,4 @@ set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/bluetooth/nimble/common/nimble_
 
 idf_component_register(SRCS "ble_lib.c" "gatt_svr.c" "misc.c" "scli.c"
                     INCLUDE_DIRS "include"
-                    REQUIRES bt console driver nvs_flash)
+                    REQUIRES bt console driver nvs_flash global_functions)

@@ -27,17 +27,18 @@
 #include "bleprph.h"
 #include "services/ans/ble_svc_ans.h"
 #include "ble_lib.h"
-
+#include "global_functions.h"
+//#include "led_control.h"
 /*** Maximum number of characteristics with the notify flag ***/
 #define MAX_NOTIFY 5
 
 uint8_t wrt_data = 0;
 volatile bool bleinterruptTriggered = false;
-
-int ble_write_data(void)
+//int brightness_in = 0; brightness_in
+int ble_get_write_data(void)
 {
     uint8_t wdata = wrt_data;
-  
+
     if(bleinterruptTriggered == true)
     {
         printf("bleinterruptTriggered!!! \n");
@@ -50,6 +51,30 @@ int ble_write_data(void)
         return -1;
     }
     //return wrt_data;
+}
+
+uint8_t ble_send_write_data(uint8_t x)
+{   //const uint8_t *data, uint16_t len
+    // if (len <= sizeof(custom_char_value)) {
+    //     memcpy(custom_char_value, data, len);
+    //     custom_char_len = len;
+
+    //     // Notify subscribers about the updated characteristic value
+    //     ble_gatts_chr_updated(ble_conn_handle, your_custom_char_handle);
+    // }
+    uint8_t data = x;
+
+    //gdata_test = 50;
+    
+    return data*10;
+    // int rc = ble_gattc_write_no_rsp(conn_handle, custom_value_handle_1, &data, sizeof(data), NULL, NULL);
+    
+    // if (rc != 0) {
+    //     printf("Error writing to characteristic: %d", rc);
+    //     return rc;
+    // }
+    
+    // printf("Characteristic updated: %d", data);
 }
 
 static const ble_uuid128_t gatt_svr_svc_uuid =
@@ -73,7 +98,6 @@ static int
 gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
                 struct ble_gatt_access_ctxt *ctxt,
                 void *arg);
-
 /****
     CUSTOM BLE CODE
 ****/
@@ -88,6 +112,9 @@ static const ble_uuid128_t time_value_uuid =
     BLE_UUID128_INIT(0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11,
                      0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99);
 
+static int time_gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
+                           struct ble_gatt_access_ctxt *ctxt, void *arg);
+
 static uint16_t custom_value_handle_1;
 
 static int time_gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
@@ -95,6 +122,7 @@ static int time_gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
     switch (ctxt->op) {
         case BLE_GATT_ACCESS_OP_READ_CHR:
             if (attr_handle == custom_value_handle_1) {
+                custom_value = gdata_test;
                 return os_mbuf_append(ctxt->om, &custom_value, sizeof(custom_value));
             }
             break;
@@ -102,7 +130,50 @@ static int time_gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
         case BLE_GATT_ACCESS_OP_WRITE_CHR:
             if (attr_handle == custom_value_handle_1) {
                 custom_value = ctxt->om->om_data[0];
+                //custom_value = gdata_test;//ble_send_write_data(20);       
                 printf("Received value from app: %d\n", custom_value);
+                return 0;
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    return BLE_ATT_ERR_UNLIKELY;
+}
+//BLE LED Brightness Input Service
+static uint8_t led_brightness = 0;
+//02484e53-e7ba-44bd-94ba-534333dc2a93
+static const ble_uuid128_t led_brt_svc_uuid = 
+    BLE_UUID128_INIT(0x93, 0x2a, 0xdc, 0x33, 0x43, 0x53, 0xba, 0x94,
+                     0xbd, 0x44, 0xba, 0xe7, 0x53, 0x4e, 0x48, 0x02);
+//bff2df76-56d6-4194-ab02-d8979d00ced0
+static const ble_uuid128_t led_brt_value_uuid = 
+    BLE_UUID128_INIT(0xd0, 0xce, 0x00, 0x9d, 0x97, 0xd8, 0x02, 0xab,
+                     0x94, 0x41, 0xd6, 0x56, 0x76, 0xdf, 0xf2, 0xbf);
+
+static int led_brt_gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
+                            struct ble_gatt_access_ctxt *ctxt, void *arg);
+
+static uint16_t custom_value_handle_2;
+
+static int led_brt_gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
+                           struct ble_gatt_access_ctxt *ctxt, void *arg) {
+    switch (ctxt->op) {
+        case BLE_GATT_ACCESS_OP_READ_CHR:
+            if (attr_handle == custom_value_handle_2) {
+                //led_brightness = gdata_test;
+                return os_mbuf_append(ctxt->om, &led_brightness, sizeof(led_brightness));
+            }
+            break;
+
+        case BLE_GATT_ACCESS_OP_WRITE_CHR:
+            if (attr_handle == custom_value_handle_2) {
+                led_brightness = ctxt->om->om_data[0];
+                //led_brightness = gdata_test;//ble_send_write_data(20);
+                brightness_in = led_brightness;      
+                //printf("Received value from app: %d\n", led_brightness);
                 return 0;
             }
             break;
@@ -159,6 +230,19 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
             .access_cb = time_gatt_svc_access,
             .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
             .val_handle = &custom_value_handle_1,
+        }, {
+            0, /* No more characteristics in this service */
+        } },
+    },
+
+    {
+        .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        .uuid = &led_brt_svc_uuid.u,
+        .characteristics = (struct ble_gatt_chr_def[]) { {
+            .uuid = &led_brt_value_uuid.u,
+            .access_cb = led_brt_gatt_svc_access,
+            .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
+            .val_handle = &custom_value_handle_2,
         }, {
             0, /* No more characteristics in this service */
         } },
@@ -241,6 +325,7 @@ gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
                 if(rc == 0)
                 {
                     wrt_data = gatt_svr_chr_val;
+                    //ble_write_data(wrt_data);
                     bleinterruptTriggered = true;
                     //printf("In Fun: %d\n", wrt_data);
                 }

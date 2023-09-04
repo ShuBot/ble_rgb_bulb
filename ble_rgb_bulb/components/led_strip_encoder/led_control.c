@@ -5,7 +5,7 @@
 #include "driver/rmt_tx.h"
 #include "led_strip_encoder.h"
 #include "led_control.h"
-
+#include "global_functions.h"
 
 #define RMT_LED_STRIP_RESOLUTION_HZ 10000000 // 10MHz resolution, 1 tick = 0.1us (led strip needs a high resolution)
 #define RMT_LED_STRIP_GPIO_NUM      15
@@ -53,7 +53,7 @@ void blink_strip_single(void)
     /*  Blinking the entire LED Strip as a Single LED.
     */
     uint32_t brightness = LED_BRIGHTNESS;
-
+    
     red = 0;  green = 50;  blue = 255;
 
     red   = (red * brightness) / 255;
@@ -186,11 +186,11 @@ void led_select_multiple(uint32_t x, uint32_t y, uint32_t z, uint32_t r, uint32_
     vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));   
 }
 
-void led_strip_single(uint32_t r, uint32_t g, uint32_t b)
+void led_strip_single(uint32_t r, uint32_t g, uint32_t b, int brightness_in)
 {
-        red     = (r * LED_BRIGHTNESS) / 255;   //Red LED Brightness
-        green   = (g * LED_BRIGHTNESS) / 255;   //Green LED Brightness
-        blue    = (b * LED_BRIGHTNESS) / 255;   //Blue LED Brightness
+        red     = (r * brightness_in) / 255;   //Red LED Brightness
+        green   = (g * brightness_in) / 255;   //Green LED Brightness
+        blue    = (b * brightness_in) / 255;   //Blue LED Brightness
 
         for(int j = 0; j < LED_NUMBERS; j++)
         {
@@ -287,12 +287,12 @@ void led_rainbow()
 
 }
 
-void led_strip_tranz()
+void led_strip_tranz(int brightness_in)
 {
     /*
     Color[] = R G B
     */
-    uint32_t brightness = LED_BRIGHTNESS;
+    uint32_t brightness = brightness_in;
     for(int i = 0; i < 8; i++)
     {
         for(int j = 0; j < LED_NUMBERS; j++)

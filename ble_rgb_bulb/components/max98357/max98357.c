@@ -7,6 +7,7 @@
 #include "driver/gpio.h"
 #include "esp_check.h"
 #include "esp_log.h"
+#include "global_functions.h"
 
 #define EXAMPLE_STD_BCLK_IO1        GPIO_NUM_26      // I2S bit clock io number   I2S_BCLK
 #define EXAMPLE_STD_WS_IO1          GPIO_NUM_27      // I2S word select io number    I2S_LRC
@@ -40,7 +41,6 @@ void i2s_write_audio(void)
 
     uint16_t *buffer = calloc(1, EXAMPLE_BUFF_SIZE * 2);
     uint16_t *buffer2 = calloc(1, EXAMPLE_BUFF_SIZE * 2);
-
 
     size_t w_bytes = 0;
     uint32_t offset = 0;
