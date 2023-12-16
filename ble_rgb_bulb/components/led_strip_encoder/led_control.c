@@ -188,6 +188,8 @@ void led_select_multiple(uint32_t x, uint32_t y, uint32_t z, uint32_t r, uint32_
 
 void led_strip_single(uint32_t r, uint32_t g, uint32_t b, int brightness_in)
 {
+        led_off();
+
         red     = (r * brightness_in) / 255;   //Red LED Brightness
         green   = (g * brightness_in) / 255;   //Green LED Brightness
         blue    = (b * brightness_in) / 255;   //Blue LED Brightness
@@ -199,7 +201,7 @@ void led_strip_single(uint32_t r, uint32_t g, uint32_t b, int brightness_in)
             led_strip_pixels[j * 3 + BLUE_PIN]  = blue;
             ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
             //vTaskDelay(pdMS_TO_TICKS(100));
-            vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
+            vTaskDelay(pdMS_TO_TICKS(20));    //CHASE_SPEED_MS
         }
 }
 
@@ -356,7 +358,7 @@ void led_strip_tranz(int brightness_in)
             led_strip_pixels[j * 3 + BLUE_PIN]  = blue;
 
             ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
-            vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
+            vTaskDelay(pdMS_TO_TICKS(50));
             // memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
             // ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config));
             // vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));

@@ -110,7 +110,7 @@ static void led_task(void *arg)
     // blink_strip(0, 5000, 150);
     // vTaskDelay(100 / portTICK_PERIOD_MS);
 
-    vTaskDelete(NULL);
+    // vTaskDelete(NULL);
 }
 
 static void ble_data_task(void *arg)
@@ -120,11 +120,10 @@ static void ble_data_task(void *arg)
     while (1) {
 
         uint8_t wdata = ble_get_write_data();    //function getting data from "ble_lib.c", from "gatt_srv.c"
-        //ble_send_write_data(200);
         // if(gdata_test >= 10)
         //     printf("global variable working! \n");
-
-        if(wdata != 255)    //interruptTriggered)
+        
+        if((wdata != 255))    //interruptTriggered)
         {
             if(xQueueSendFromISR(bleWriteQueue, &wdata, &xHigherPriorityTaskWoken) == pdTRUE) 
             {
@@ -143,14 +142,11 @@ static void ble_data_task(void *arg)
                 ESP_LOGI(tag,"Data send to Queue. %d \n", wdata);
             }
             
-            //interruptTriggered = false;
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
     //vTaskDelete(NULL);
 }
-
-
 
 void app_main(void)
 {
@@ -171,9 +167,9 @@ void app_main(void)
         Avoid using too long delays.
         Use Hard and Soft Interrupts as much as possible.
     ***/
-    xTaskCreate(ble_data_task, "ble_data_task", 2048*2, NULL, configMAX_PRIORITIES-1, NULL);
+    xTaskCreate(ble_data_task, "ble_data_task", 2048*2, NULL, configMAX_PRIORITIES-2, NULL);
     
-    xTaskCreatePinnedToCore(led_task,       "led_task",     2048*2, NULL, configMAX_PRIORITIES, NULL, 1);
+    xTaskCreatePinnedToCore(led_task,       "led_task",     2048*2, NULL, configMAX_PRIORITIES-1, NULL, 1);
 
     //xTaskCreate(audio_task,     "audio_task",   2048*2, NULL, configMAX_PRIORITIES, NULL);
     

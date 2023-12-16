@@ -89,10 +89,10 @@ static const ble_uuid128_t gatt_svr_chr_uuid =
                      0x22, 0x22, 0x22, 0x22, 0x33, 0x33, 0x33, 0x33);
 
 /* A custom descriptor */
-static uint8_t gatt_svr_dsc_val;
-static const ble_uuid128_t gatt_svr_dsc_uuid =
-    BLE_UUID128_INIT(0x01, 0x01, 0x01, 0x01, 0x12, 0x12, 0x12, 0x12,
-                     0x23, 0x23, 0x23, 0x23, 0x34, 0x34, 0x34, 0x34);
+// static uint8_t gatt_svr_dsc_val;
+// static const ble_uuid128_t gatt_svr_dsc_uuid =
+//     BLE_UUID128_INIT(0x01, 0x01, 0x01, 0x01, 0x12, 0x12, 0x12, 0x12,
+//                      0x23, 0x23, 0x23, 0x23, 0x34, 0x34, 0x34, 0x34);
 
 static int
 gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
@@ -117,31 +117,6 @@ static int time_gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
 
 static uint16_t custom_value_handle_1;
 
-static int time_gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
-                           struct ble_gatt_access_ctxt *ctxt, void *arg) {
-    switch (ctxt->op) {
-        case BLE_GATT_ACCESS_OP_READ_CHR:
-            if (attr_handle == custom_value_handle_1) {
-                custom_value = gdata_test;
-                return os_mbuf_append(ctxt->om, &custom_value, sizeof(custom_value));
-            }
-            break;
-
-        case BLE_GATT_ACCESS_OP_WRITE_CHR:
-            if (attr_handle == custom_value_handle_1) {
-                custom_value = ctxt->om->om_data[0];
-                //custom_value = gdata_test;//ble_send_write_data(20);       
-                printf("Received value from app: %d\n", custom_value);
-                return 0;
-            }
-            break;
-
-        default:
-            break;
-    }
-
-    return BLE_ATT_ERR_UNLIKELY;
-}
 //BLE LED Brightness Input Service
 static uint8_t led_brightness = 0;
 //02484e53-e7ba-44bd-94ba-534333dc2a93
@@ -157,33 +132,6 @@ static int led_brt_gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
                             struct ble_gatt_access_ctxt *ctxt, void *arg);
 
 static uint16_t custom_value_handle_2;
-
-static int led_brt_gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
-                           struct ble_gatt_access_ctxt *ctxt, void *arg) {
-    switch (ctxt->op) {
-        case BLE_GATT_ACCESS_OP_READ_CHR:
-            if (attr_handle == custom_value_handle_2) {
-                //led_brightness = gdata_test;
-                return os_mbuf_append(ctxt->om, &led_brightness, sizeof(led_brightness));
-            }
-            break;
-
-        case BLE_GATT_ACCESS_OP_WRITE_CHR:
-            if (attr_handle == custom_value_handle_2) {
-                led_brightness = ctxt->om->om_data[0];
-                //led_brightness = gdata_test;//ble_send_write_data(20);
-                brightness_in = led_brightness;      
-                //printf("Received value from app: %d\n", led_brightness);
-                return 0;
-            }
-            break;
-
-        default:
-            break;
-    }
-
-    return BLE_ATT_ERR_UNLIKELY;
-}
 
 static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
     {
@@ -203,19 +151,19 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY | BLE_GATT_CHR_F_INDICATE,
 #endif
                 .val_handle = &gatt_svr_chr_val_handle,
-                .descriptors = (struct ble_gatt_dsc_def[])
-                { {
-                      .uuid = &gatt_svr_dsc_uuid.u,
-#if CONFIG_EXAMPLE_ENCRYPTION
-                      .att_flags = BLE_ATT_F_READ | BLE_ATT_F_READ_ENC,
-#else
-                      .att_flags = BLE_ATT_F_READ,
-#endif
-                      .access_cb = gatt_svc_access,
-                    }, {
-                      0, /* No more descriptors in this characteristic */
-                    }
-                },
+//                 .descriptors = (struct ble_gatt_dsc_def[])
+//                 { {
+//                       .uuid = &gatt_svr_dsc_uuid.u,
+// #if CONFIG_EXAMPLE_ENCRYPTION
+//                       .att_flags = BLE_ATT_F_READ | BLE_ATT_F_READ_ENC,
+// #else
+//                       .att_flags = BLE_ATT_F_READ,
+// #endif
+//                       .access_cb = gatt_svc_access,
+//                     }, {
+//                       0, /* No more descriptors in this characteristic */
+//                     }
+//                 },
             }, {
                 0, /* No more characteristics in this service. */
             }
@@ -325,38 +273,37 @@ gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
                 if(rc == 0)
                 {
                     wrt_data = gatt_svr_chr_val;
-                    //ble_write_data(wrt_data);
                     bleinterruptTriggered = true;
                     //printf("In Fun: %d\n", wrt_data);
                 }
                 return rc;
             }
-            //wrt_data = gatt_svr_chr_val;
+            
         } else {
             MODLOG_DFLT(INFO, "Characteristic write by NimBLE stack; attr_handle=%d",
                         attr_handle);
         }
         goto unknown;
 
-    case BLE_GATT_ACCESS_OP_READ_DSC:
-        if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
-            MODLOG_DFLT(INFO, "Descriptor read; conn_handle=%d attr_handle=%d\n",
-                        conn_handle, attr_handle);
-        } else {
-            MODLOG_DFLT(INFO, "Descriptor read by NimBLE stack; attr_handle=%d\n",
-                        attr_handle);
-        }
-        uuid = ctxt->dsc->uuid;
-        if (ble_uuid_cmp(uuid, &gatt_svr_dsc_uuid.u) == 0) {
-            rc = os_mbuf_append(ctxt->om,
-                                &gatt_svr_dsc_val,
-                                sizeof(gatt_svr_chr_val));
-            return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
-        }
-        goto unknown;
+    // case BLE_GATT_ACCESS_OP_READ_DSC:
+    //     if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+    //         MODLOG_DFLT(INFO, "Descriptor read; conn_handle=%d attr_handle=%d\n",
+    //                     conn_handle, attr_handle);
+    //     } else {
+    //         MODLOG_DFLT(INFO, "Descriptor read by NimBLE stack; attr_handle=%d\n",
+    //                     attr_handle);
+    //     }
+    //     uuid = ctxt->dsc->uuid;
+    //     if (ble_uuid_cmp(uuid, &gatt_svr_dsc_uuid.u) == 0) {
+    //         rc = os_mbuf_append(ctxt->om,
+    //                             &gatt_svr_dsc_val,
+    //                             sizeof(gatt_svr_chr_val));
+    //         return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+    //     }
+    //     goto unknown;
 
-    case BLE_GATT_ACCESS_OP_WRITE_DSC:
-        goto unknown;
+    // case BLE_GATT_ACCESS_OP_WRITE_DSC:
+    //     goto unknown;
 
     default:
         goto unknown;
@@ -367,6 +314,59 @@ unknown:
      * The NimBLE host should not have called this function;
      */
     assert(0);
+    return BLE_ATT_ERR_UNLIKELY;
+}
+
+static int time_gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
+                           struct ble_gatt_access_ctxt *ctxt, void *arg) {
+    switch (ctxt->op) {
+        case BLE_GATT_ACCESS_OP_READ_CHR:
+            if (attr_handle == custom_value_handle_1) {
+                custom_value = gdata_test;
+                return os_mbuf_append(ctxt->om, &custom_value, sizeof(custom_value));
+            }
+            break;
+
+        case BLE_GATT_ACCESS_OP_WRITE_CHR:
+            if (attr_handle == custom_value_handle_1) {
+                custom_value = ctxt->om->om_data[0];
+                //custom_value = gdata_test;//ble_send_write_data(20);       
+                printf("Received value from app: %d\n", custom_value);
+                return 0;
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    return BLE_ATT_ERR_UNLIKELY;
+}
+
+static int led_brt_gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
+                           struct ble_gatt_access_ctxt *ctxt, void *arg) {
+    switch (ctxt->op) {
+        case BLE_GATT_ACCESS_OP_READ_CHR:
+            if (attr_handle == custom_value_handle_2) {
+                //led_brightness = gdata_test;
+                return os_mbuf_append(ctxt->om, &led_brightness, sizeof(led_brightness));
+            }
+            break;
+
+        case BLE_GATT_ACCESS_OP_WRITE_CHR:
+            if (attr_handle == custom_value_handle_2) {
+                led_brightness = ctxt->om->om_data[0];
+                //led_brightness = gdata_test;//ble_send_write_data(20);
+                brightness_in = led_brightness;      
+                //printf("Received value from app: %d\n", led_brightness);
+                return 0;
+            }
+            break;
+
+        default:
+            break;
+    }
+
     return BLE_ATT_ERR_UNLIKELY;
 }
 
@@ -422,7 +422,7 @@ gatt_svr_init(void)
     }
 
     /* Setting a value for the read-only descriptor */
-    gatt_svr_dsc_val = 0x99;
+    //gatt_svr_dsc_val = 0x99;
 
     return 0;
 }
