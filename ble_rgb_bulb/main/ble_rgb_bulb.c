@@ -36,7 +36,7 @@ int brightness_in = 0;  //LED brightness input from BLE
 
 static void led_task(void *arg)
 {
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
     while (1) {
         /*
             blink_strip(led_color_code, time to blink for(ms) , delay time between blinks(ms))
@@ -69,29 +69,30 @@ static void led_task(void *arg)
                         break;
 
                 case 1 : 
-                        led_strip_single(0, 0, 255, lb);
-                        //blink_strip(1, 5000, 25);
+                        // blink_strip(2, 50000, 50);
                         printf("BLUE LED ON! \n");
+                        led_strip_single(0, 0, 255, lb);
                         vTaskDelay(10 / portTICK_PERIOD_MS);
                         break;
                 
                 case 2 : 
-                        led_strip_single(255, 0, 0, lb);
+                        // blink_strip(6, 10000, 250);
                         printf("REG LED ON! \n");
+                        led_strip_single(255, 0, 0, lb);
                         vTaskDelay(10 / portTICK_PERIOD_MS);
                         break;
                 
                 case 3 : 
-                        led_strip_single(0, 255, 0, lb);
                         printf("GREEN LED ON! \n");
+                        led_strip_single(0, 255, 0, lb);
                         vTaskDelay(10 / portTICK_PERIOD_MS);
-                        //notify_2();
-                        //vTaskDelay(10 / portTICK_PERIOD_MS);
+                        // notify_2();
+                        // vTaskDelay(10 / portTICK_PERIOD_MS);
                         break;
                 
                 case 4 :
-                        led_strip_tranz(lb);
                         printf("RAINBOW LED ON! \n");
+                        led_strip_tranz(lb);
                         vTaskDelay(10 / portTICK_PERIOD_MS);
                         break;
                 
@@ -148,6 +149,65 @@ static void ble_data_task(void *arg)
     //vTaskDelete(NULL);
 }
 
+static void audio_task(void *arg)
+{
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    ESP_LOGI(tag,"Audio Task Starting.\n");
+
+    while(1)
+    {
+        int w_data = 0;
+        // notify_1();
+        // ESP_LOGI(tag,"Audio 1 Played.");
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);
+        // if (xSemaphoreTake(bleDataUpdate, portMAX_DELAY) == pdTRUE)
+        // {
+        //     if (xQueueReceive(bleWriteQueue, &w_data, portMAX_DELAY) == pdTRUE) {
+        //         printf("audio_task received event data: %d\n", w_data);
+        // }
+        
+        w_data = gdata_test;
+        switch(w_data)
+        {
+            case 0 :
+                    led_off();
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                    break;
+            
+            case 1 : 
+                    ESP_LOGI(tag,"Audio 1 Played.");
+                    notify_1();
+                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    break;
+            
+            case 2 : 
+                    ESP_LOGI(tag,"Audio 2 Played.");
+                    notify_2();
+                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    break;
+            
+            case 3 : 
+                    ESP_LOGI(tag,"Audio 1 Played.");
+                    notify_1();
+                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    break;
+            
+            case 4 :
+                    ESP_LOGI(tag,"Audio 2 Played.");
+                    notify_2();
+                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    break;
+            
+            default:
+                    //ESP_ERROR_CHECK(i2s_channel_disable(tx_chan));
+                    break; 
+        }
+        // }
+    }
+
+    // vTaskDelete(NULL);
+}
+
 void app_main(void)
 {
     bleDataUpdate = xSemaphoreCreateBinary();
@@ -159,7 +219,7 @@ void app_main(void)
     }
 
     ble_start();        //BLE Module Initiated
-    //max98357a_init();   //I2S Audio Module Initiated
+    // max98357a_init();   //I2S Audio Module Initiated
     led_setup();        //LED GPIO Module Initiated
 
     /***
@@ -169,49 +229,8 @@ void app_main(void)
     ***/
     xTaskCreate(ble_data_task, "ble_data_task", 2048*2, NULL, configMAX_PRIORITIES-2, NULL);
     
-    xTaskCreatePinnedToCore(led_task,       "led_task",     2048*2, NULL, configMAX_PRIORITIES-1, NULL, 1);
+    xTaskCreatePinnedToCore(led_task,   "led_task",     2048*2, NULL, configMAX_PRIORITIES-1, NULL, 1);
 
-    //xTaskCreate(audio_task,     "audio_task",   2048*2, NULL, configMAX_PRIORITIES, NULL);
+    xTaskCreate(audio_task, "audio_task",   2048*2, NULL, configMAX_PRIORITIES-1, NULL);
     
 }
-
-// static void audio_task(void *arg)
-// {
-    //vTaskDelay(100 / portTICK_PERIOD_MS);
-    //ESP_LOGI(tag,"Audio Task Starting.\n");
-
-    //while(1)
-    //{
-    //    int w_data = 0;
-    //     switch(w_data)
-    //     {
-    //         case 1 : 
-    //                 notify_1();
-    //                 ESP_LOGI(tag,"Audio 1 Played.");
-    //                 vTaskDelay(100 / portTICK_PERIOD_MS);
-    //                 break;
-            
-    //         case 2 : 
-    //                 notify_2();
-    //                 ESP_LOGI(tag,"Audio 2 Played.");
-    //                 vTaskDelay(100 / portTICK_PERIOD_MS);
-    //                 break;
-            
-    //         // case 3 : 
-    //         //         notify_3();
-    //         //         vTaskDelay(100 / portTICK_PERIOD_MS);
-    //         //         break;
-            
-    //         // case 4 :
-    //         //         notify_4();
-    //         //         vTaskDelay(100 / portTICK_PERIOD_MS);
-    //         //         break;
-            
-    //         default:
-    //                 //ESP_ERROR_CHECK(i2s_channel_disable(tx_chan));
-    //                 break; 
-    //     }
-    //}
-
-    //vTaskDelete(NULL);
-// }

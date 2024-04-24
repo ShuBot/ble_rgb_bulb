@@ -9,8 +9,8 @@
 #include "esp_log.h"
 #include "global_functions.h"
 
-#define EXAMPLE_STD_BCLK_IO1        GPIO_NUM_26      // I2S bit clock io number   I2S_BCLK
-#define EXAMPLE_STD_WS_IO1          GPIO_NUM_27      // I2S word select io number    I2S_LRC
+#define EXAMPLE_STD_BCLK_IO1        GPIO_NUM_27      // I2S bit clock io number   I2S_BCLK
+#define EXAMPLE_STD_WS_IO1          GPIO_NUM_26      // I2S word select io number    I2S_LRC
 #define EXAMPLE_STD_DOUT_IO1        GPIO_NUM_25     // I2S data out io number    I2S_DOUT
 #define EXAMPLE_STD_DIN_IO1         GPIO_NUM_NC    // I2S data in io number
 
@@ -104,6 +104,8 @@ void notify_1(void)
     
     size_t w_bytes = 0;
     uint32_t offset = 0;
+    
+    max98357a_init();
 
     ESP_ERROR_CHECK(i2s_channel_enable(tx_chan));
     while (1) {
@@ -127,6 +129,7 @@ void notify_1(void)
 
     free(buffer);
     ESP_ERROR_CHECK(i2s_channel_disable(tx_chan));
+    i2s_del_channel(tx_chan);
     vTaskDelay(10 / portTICK_PERIOD_MS);
 }
 
@@ -136,6 +139,8 @@ void notify_2(void)
     
     size_t w_bytes = 0;
     uint32_t offset = 0;
+
+    max98357a_init();
 
     ESP_ERROR_CHECK(i2s_channel_enable(tx_chan));
     while (1) {
@@ -159,6 +164,7 @@ void notify_2(void)
 
     free(buffer);
     ESP_ERROR_CHECK(i2s_channel_disable(tx_chan));
+    i2s_del_channel(tx_chan);
     vTaskDelay(10 / portTICK_PERIOD_MS);
 }
 

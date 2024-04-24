@@ -73,6 +73,7 @@ void blink_strip_single(void)
     // led_off();
     // vTaskDelay(pdMS_TO_TICKS(CHASE_SPEED_MS));
 }
+
 void blink_strip(uint32_t c, uint32_t time, uint32_t delay_ms)
 {
     TickType_t elapsed_ticks, new_ticks;
@@ -451,7 +452,7 @@ void led_setup(void)
     ESP_LOGI(TAG, "Enable RMT TX channel");
     ESP_ERROR_CHECK(rmt_enable(led_chan));
 
-    ESP_LOGI(TAG, "Start LED rainbow chase");
+    // ESP_LOGI(TAG, "Start LED rainbow chase");
     
     // while (1) {
     //     for (int i = 0; i < 3; i++) {
