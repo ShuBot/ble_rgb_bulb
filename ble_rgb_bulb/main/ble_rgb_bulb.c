@@ -34,85 +34,85 @@ volatile bool interruptTriggered = false;
 int gdata_test = 0;
 int brightness_in = 0;  //LED brightness input from BLE
 
-static void led_task(void *arg)
-{
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-    while (1) {
-        /*
-            blink_strip(led_color_code, time to blink for(ms) , delay time between blinks(ms))
-            color code:  0:White 1:Purple 2:Blue 3:Green 4:Yellow 5:Orange 6:Red
-        */
-        //blink_strip(5, 0, 10000);
-        //blink_strip_single();
-        //led_strip_tranz();
-        //led_rainbow();
-        //vTaskDelay(10 / portTICK_PERIOD_MS);
-        //led_strip_single(0, 0, 255);  //Send RGB color data for LED to glow continuously.
-        //vTaskDelay(10 / portTICK_PERIOD_MS);
+// static void led_task(void *arg)
+// {
+//     vTaskDelay(100 / portTICK_PERIOD_MS);
+//     while (1) {
+//         /*
+//             blink_strip(led_color_code, time to blink for(ms) , delay time between blinks(ms))
+//             color code:  0:White 1:Purple 2:Blue 3:Green 4:Yellow 5:Orange 6:Red
+//         */
+//         //blink_strip(5, 0, 10000);
+//         //blink_strip_single();
+//         //led_strip_tranz();
+//         //led_rainbow();
+//         //vTaskDelay(10 / portTICK_PERIOD_MS);
+//         //led_strip_single(0, 0, 255);  //Send RGB color data for LED to glow continuously.
+//         //vTaskDelay(10 / portTICK_PERIOD_MS);
         
-        if (xSemaphoreTake(bleDataUpdate, portMAX_DELAY) == pdTRUE)
-        {
-            // Handle the event data received from ble_data_task
-            int lb = brightness_in;
-            int eventData = 0;
-            // Receive the event data from ble_data_task
-            if (xQueueReceive(bleWriteQueue, &eventData, portMAX_DELAY) == pdTRUE) {
-                printf("led_task received event data: %d\n", eventData);
-            }
+//         if (xSemaphoreTake(bleDataUpdate, portMAX_DELAY) == pdTRUE)
+//         {
+//             // Handle the event data received from ble_data_task
+//             int lb = brightness_in;
+//             int eventData = 0;
+//             // Receive the event data from ble_data_task
+//             if (xQueueReceive(bleWriteQueue, &eventData, portMAX_DELAY) == pdTRUE) {
+//                 printf("led_task received event data: %d\n", eventData);
+//             }
 
-            switch(eventData)
-            {
-                case 0 :
-                        led_off();
-                        //blink_strip_single();
-                        vTaskDelay(10 / portTICK_PERIOD_MS);
-                        break;
+//             switch(eventData)
+//             {
+//                 case 0 :
+//                         led_off();
+//                         //blink_strip_single();
+//                         vTaskDelay(10 / portTICK_PERIOD_MS);
+//                         break;
 
-                case 1 : 
-                        // blink_strip(2, 50000, 50);
-                        printf("BLUE LED ON! \n");
-                        led_strip_single(0, 0, 255, lb);
-                        vTaskDelay(10 / portTICK_PERIOD_MS);
-                        break;
+//                 case 1 : 
+//                         // blink_strip(2, 50000, 50);
+//                         printf("BLUE LED ON! \n");
+//                         led_strip_single(0, 0, 255, lb);
+//                         vTaskDelay(10 / portTICK_PERIOD_MS);
+//                         break;
                 
-                case 2 : 
-                        // blink_strip(6, 10000, 250);
-                        printf("REG LED ON! \n");
-                        led_strip_single(255, 0, 0, lb);
-                        vTaskDelay(10 / portTICK_PERIOD_MS);
-                        break;
+//                 case 2 : 
+//                         // blink_strip(6, 10000, 250);
+//                         printf("REG LED ON! \n");
+//                         led_strip_single(255, 0, 0, lb);
+//                         vTaskDelay(10 / portTICK_PERIOD_MS);
+//                         break;
                 
-                case 3 : 
-                        printf("GREEN LED ON! \n");
-                        led_strip_single(0, 255, 0, lb);
-                        vTaskDelay(10 / portTICK_PERIOD_MS);
-                        // notify_2();
-                        // vTaskDelay(10 / portTICK_PERIOD_MS);
-                        break;
+//                 case 3 : 
+//                         printf("GREEN LED ON! \n");
+//                         led_strip_single(0, 255, 0, lb);
+//                         vTaskDelay(10 / portTICK_PERIOD_MS);
+//                         // notify_2();
+//                         // vTaskDelay(10 / portTICK_PERIOD_MS);
+//                         break;
                 
-                case 4 :
-                        printf("RAINBOW LED ON! \n");
-                        led_strip_tranz(lb);
-                        vTaskDelay(10 / portTICK_PERIOD_MS);
-                        break;
+//                 case 4 :
+//                         printf("RAINBOW LED ON! \n");
+//                         led_strip_tranz(lb);
+//                         vTaskDelay(10 / portTICK_PERIOD_MS);
+//                         break;
                 
-                default:
-                        break;
-            }
-        }
+//                 default:
+//                         break;
+//             }
+//         }
         
-    }
-    // blink_strip(1, 5000, 25);
-    // vTaskDelay(100 / portTICK_PERIOD_MS);
-    // blink_strip(4, 5000, 50);
-    // vTaskDelay(100 / portTICK_PERIOD_MS);
-    // blink_strip(6, 5000, 100);
-    // vTaskDelay(100 / portTICK_PERIOD_MS);
-    // blink_strip(0, 5000, 150);
-    // vTaskDelay(100 / portTICK_PERIOD_MS);
+//     }
+//     // blink_strip(1, 5000, 25);
+//     // vTaskDelay(100 / portTICK_PERIOD_MS);
+//     // blink_strip(4, 5000, 50);
+//     // vTaskDelay(100 / portTICK_PERIOD_MS);
+//     // blink_strip(6, 5000, 100);
+//     // vTaskDelay(100 / portTICK_PERIOD_MS);
+//     // blink_strip(0, 5000, 150);
+//     // vTaskDelay(100 / portTICK_PERIOD_MS);
 
-    // vTaskDelete(NULL);
-}
+//     // vTaskDelete(NULL);
+// }
 
 static void ble_data_task(void *arg)
 {
@@ -170,7 +170,7 @@ static void audio_task(void *arg)
         switch(w_data)
         {
             case 0 :
-                    led_off();
+                    // led_off();
                     vTaskDelay(10 / portTICK_PERIOD_MS);
                     break;
             
@@ -219,8 +219,8 @@ void app_main(void)
     }
 
     ble_start();        //BLE Module Initiated
-    // max98357a_init();   //I2S Audio Module Initiated
-    led_setup();        //LED GPIO Module Initiated
+    max98357a_init();   //I2S Audio Module Initiated
+    // led_setup();        //LED GPIO Module Initiated
 
     /***
         Properly manage the Task Priorities.
@@ -229,7 +229,7 @@ void app_main(void)
     ***/
     xTaskCreate(ble_data_task, "ble_data_task", 2048*2, NULL, configMAX_PRIORITIES-2, NULL);
     
-    xTaskCreatePinnedToCore(led_task,   "led_task",     2048*2, NULL, configMAX_PRIORITIES-1, NULL, 1);
+    // xTaskCreatePinnedToCore(led_task,   "led_task",     2048*2, NULL, configMAX_PRIORITIES-1, NULL, 1);
 
     xTaskCreate(audio_task, "audio_task",   2048*2, NULL, configMAX_PRIORITIES-1, NULL);
     

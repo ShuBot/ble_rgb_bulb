@@ -9,10 +9,21 @@
 #include "esp_log.h"
 #include "global_functions.h"
 
-#define EXAMPLE_STD_BCLK_IO1        GPIO_NUM_27      // I2S bit clock io number   I2S_BCLK
-#define EXAMPLE_STD_WS_IO1          GPIO_NUM_26      // I2S word select io number    I2S_LRC
-#define EXAMPLE_STD_DOUT_IO1        GPIO_NUM_25     // I2S data out io number    I2S_DOUT
-#define EXAMPLE_STD_DIN_IO1         GPIO_NUM_NC    // I2S data in io number
+/***************
+* 
+* LRC | IO26  | Left Right Clock
+* BCLK| IO27  | Bit Clock Input
+* DIN | IO25  | Digital Data input
+* GAIN| GND   | Gain Select. If connected with VDD, Gain is 6dB, If GND, Gain 12dB.
+* SD  |  -    | Shutdown. To activate, pull it low.
+* GND |   GND | Supply Ground
+* VIN |   5V  | Voltage Input
+*
+***************/
+#define EXAMPLE_STD_BCLK_IO1        GPIO_NUM_27      //ESP's I2S bit clock io number    I2S_BCLK
+#define EXAMPLE_STD_WS_IO1          GPIO_NUM_26      //ESP's I2S word select io number  I2S_LRC
+#define EXAMPLE_STD_DOUT_IO1        GPIO_NUM_25      //ESP's I2S data out io number     I2S_DOUT
+#define EXAMPLE_STD_DIN_IO1         GPIO_NUM_NC      //I2S data in io number
 
 #define EXAMPLE_BUFF_SIZE           1024
 #define SAMPLE_RATE                 44100
